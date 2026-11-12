@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { run } from "../src/cli.ts";
+import { run, useColor } from "../src/cli.ts";
 import { addNote, deleteNote, formatList, NotesError, type Note } from "../src/notes.ts";
 
 const DAY = "2026-11-06";
@@ -28,6 +28,44 @@ describe("notes", () => {
   it("formats a list", () => {
     expect(formatList([])).toBe("No notes yet.");
     expect(formatList(addNote([], "milk", DAY))).toBe("1. milk (2026-11-06)");
+  });
+});
+
+describe("color", () => {
+  const note: Note = { id: 1, text: "hello", created: "2026-01-01" };
+  const colored = "\x1b[90m1.\x1b[39m \x1b[32mhello\x1b[39m (2026-01-01)";
+
+  it("colors id gray and text green, date plain", () => {
+    expect(formatList([note], true)).toBe(colored);
+  });
+
+  it("colors each line independently", () => {
+    expect(formatList([note, { ...note, id: 2 }], true).split("\n")).toHaveLength(2);
+    expect(formatList([note, note], true)).toBe(`${colored}\n${colored}`);
+  });
+
+  it("is plain when off or by default", () => {
+    expect(formatList([note], false)).toBe("1. hello (2026-01-01)");
+    expect(formatList([note])).toBe("1. hello (2026-01-01)");
+  });
+
+  it("keeps the empty list plain", () => {
+    expect(formatList([], true)).toBe("No notes yet.");
+    expect(formatList([], false)).toBe("No notes yet.");
+  });
+
+  it("decides color from tty and NO_COLOR", () => {
+    expect(useColor(true, {})).toBe(true);
+    expect(useColor(false, {})).toBe(false);
+    expect(useColor(true, { NO_COLOR: "1" })).toBe(false);
+    expect(useColor(true, { NO_COLOR: "" })).toBe(true);
+  });
+
+  it("run colors only when asked", () => {
+    const file = tmpFile();
+    run(["add", "x"], file, DAY);
+    expect(run(["list"], file, DAY, true).out).toContain("\x1b[32mx\x1b[39m");
+    expect(run(["list"], file, DAY).out).toBe("1. x (2026-11-06)");
   });
 });
 

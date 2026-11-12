@@ -8,7 +8,11 @@ export interface Result {
 
 const USAGE = "usage: notes add <text> | notes list | notes delete <id>";
 
-export function run(argv: string[], file: string, today: string): Result {
+export function useColor(isTTY: boolean, env: Record<string, string | undefined>): boolean {
+  return isTTY && !env.NO_COLOR;
+}
+
+export function run(argv: string[], file: string, today: string, color = false): Result {
   const [command, ...rest] = argv;
   try {
     const notes = loadNotes(file);
@@ -17,7 +21,7 @@ export function run(argv: string[], file: string, today: string): Result {
       saveNotes(file, next);
       return { code: 0, out: `Added note ${next[next.length - 1].id}.` };
     }
-    if (command === "list") return { code: 0, out: formatList(notes) };
+    if (command === "list") return { code: 0, out: formatList(notes, color) };
     if (command === "delete") {
       saveNotes(file, deleteNote(notes, Number(rest[0])));
       return { code: 0, out: `Deleted note ${rest[0]}.` };
@@ -30,7 +34,9 @@ export function run(argv: string[], file: string, today: string): Result {
 }
 
 if (import.meta.main) {
-  const result = run(process.argv.slice(2), process.env.NOTES_FILE ?? "notes.json", new Date().toISOString().slice(0, 10));
+  const color = useColor(process.stdout.isTTY === true, process.env);
+  const today = new Date().toISOString().slice(0, 10);
+  const result = run(process.argv.slice(2), process.env.NOTES_FILE ?? "notes.json", today, color);
   console.log(result.out);
   process.exitCode = result.code;
 }

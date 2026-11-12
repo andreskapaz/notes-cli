@@ -32,7 +32,17 @@ export function deleteNote(notes: Note[], id: number): Note[] {
   return notes.filter((n) => n.id !== id);
 }
 
-export function formatList(notes: Note[]): string {
+const GRAY = "\x1b[90m";
+const GREEN = "\x1b[32m";
+const RESET = "\x1b[39m";
+
+export function paint(code: string, s: string, color: boolean): string {
+  return color ? `${code}${s}${RESET}` : s;
+}
+
+export function formatList(notes: Note[], color = false): string {
   if (notes.length === 0) return "No notes yet.";
-  return notes.map((n) => `${n.id}. ${n.text} (${n.created})`).join("\n");
+  return notes
+    .map((n) => `${paint(GRAY, `${n.id}.`, color)} ${paint(GREEN, n.text, color)} (${n.created})`)
+    .join("\n");
 }

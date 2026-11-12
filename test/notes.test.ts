@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { run } from "../src/cli.ts";
-import { addNote, deleteNote, formatList, NotesError, type Note } from "../src/notes.ts";
+import { addNote, deleteNote, formatList, formatListColor, NotesError, type Note } from "../src/notes.ts";
 
 const DAY = "2026-11-06";
 const tmpFile = () => join(mkdtempSync(join(tmpdir(), "notes-")), "notes.json");
@@ -54,5 +54,44 @@ describe("cli", () => {
 
   it("prints usage for unknown commands", () => {
     expect(run(["fly"], tmpFile(), DAY).code).toBe(2);
+  });
+});
+
+const COLORED = "\x1b[90m1\x1b[0m. \x1b[32mmilk\x1b[0m (2026-11-06)";
+
+describe("color", () => {
+  it("colors one note", () => {
+    expect(formatListColor(addNote([], "milk", DAY))).toBe(COLORED);
+  });
+
+  it("colors each line separately", () => {
+    const notes = addNote(addNote([], "milk", DAY), "eggs", DAY);
+    const lines = formatListColor(notes).split("\n");
+    expect(lines).toEqual([COLORED, "\x1b[90m2\x1b[0m. \x1b[32meggs\x1b[0m (2026-11-06)"]);
+  });
+
+  it("does not color the empty message", () => {
+    expect(formatListColor([])).toBe("No notes yet.");
+  });
+
+  it("run colors list when color is true", () => {
+    const file = tmpFile();
+    run(["add", "milk"], file, DAY);
+    expect(run(["list"], file, DAY, true)).toEqual({ code: 0, out: COLORED });
+  });
+
+  it("run stays plain by default or when color is false", () => {
+    const file = tmpFile();
+    run(["add", "milk"], file, DAY);
+    expect(run(["list"], file, DAY).out).not.toContain("\x1b");
+    expect(run(["list"], file, DAY, false).out).not.toContain("\x1b");
+  });
+
+  it("keeps formatList plain", () => {
+    expect(formatList(addNote([], "milk", DAY))).not.toContain("\x1b");
+  });
+
+  it("leaves errors uncolored", () => {
+    expect(run(["delete", "3"], tmpFile(), DAY, true)).toEqual({ code: 1, out: "error: no note with id 3" });
   });
 });

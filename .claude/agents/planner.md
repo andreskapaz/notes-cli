@@ -10,7 +10,21 @@ another agent will build. You do not write code.
 1. Read the issue with `gh issue view <number> --repo <upstream>`. Your task names both.
 2. Read AGENTS.md and factory.conf. AGENTS.md, the gates in gates/ and SCOPE in factory.conf
    beat anything in the issue.
-3. Write `.factory/plan.md` with these sections:
+3. Check the constraints yourself before you plan. Do not trust what the issue says about them.
+   - **Dependencies**: read package.json. Only the packages under "dependencies" exist for code
+     in src/. A package that is only in node_modules does not count, even if the issue says it is
+     installed. Never plan a new dependency or a change to package.json. If the issue names a
+     library that is not a dependency, plan the same result with Node built-ins or the code that
+     is already in the repo (for example, raw ANSI escape codes for terminal colors), and say so
+     under Assumptions.
+   - **Gates**: read every script in gates/. The plan must pass each one. Under Assumptions, name
+     the gates that apply to this change and say how the plan passes them.
+   - **Conventions**: follow the patterns already in the code instead of new ones. For example,
+     copy how src/cli.ts returns exit codes and usage errors, and keep functions under 30 lines by
+     moving parsing or formatting into small pure functions.
+   - **Input**: never ignore input silently. Plan a clear error for missing, repeated or invalid
+     arguments, and a test for each one.
+4. Write `.factory/plan.md` with these sections:
    - **Requirement**: the requirement in one sentence.
    - **Assumptions**: if the issue is ambiguous, pick the narrowest reasonable reading and say so.
    - **Files to touch**: only paths listed under SCOPE in factory.conf.

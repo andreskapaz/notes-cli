@@ -5,6 +5,7 @@ export interface Note {
   id: number;
   text: string;
   created: string; // ISO date, YYYY-MM-DD
+  tags?: string[];
 }
 
 export class NotesError extends Error {}
@@ -20,11 +21,27 @@ export function saveNotes(file: string, notes: Note[]): void {
   writeFileSync(file, JSON.stringify(notes, null, 2) + "\n");
 }
 
-export function addNote(notes: Note[], text: string, today: string): Note[] {
+export function normalizeTag(tag: string): string {
+  const clean = tag.trim().toLowerCase();
+  if (!/^[a-z0-9_-]{1,30}$/.test(clean)) {
+    throw new NotesError(`invalid tag "${tag}": use 1-30 characters from a-z, 0-9, _ and -`);
+  }
+  return clean;
+}
+
+export function addNote(notes: Note[], text: string, today: string, tags: string[] = []): Note[] {
   const clean = text.trim();
   if (!clean) throw new NotesError("a note needs some text");
+  const unique = [...new Set(tags.map(normalizeTag))];
   const id = notes.reduce((max, n) => Math.max(max, n.id), 0) + 1;
-  return [...notes, { id, text: clean, created: today }];
+  const note: Note = { id, text: clean, created: today };
+  if (unique.length > 0) note.tags = unique;
+  return [...notes, note];
+}
+
+export function filterByTag(notes: Note[], tag: string): Note[] {
+  const wanted = normalizeTag(tag);
+  return notes.filter((n) => n.tags?.includes(wanted));
 }
 
 export function deleteNote(notes: Note[], id: number): Note[] {
@@ -34,5 +51,6 @@ export function deleteNote(notes: Note[], id: number): Note[] {
 
 export function formatList(notes: Note[]): string {
   if (notes.length === 0) return "No notes yet.";
-  return notes.map((n) => `${n.id}. ${n.text} (${n.created})`).join("\n");
+  const tagText = (n: Note) => (n.tags?.length ? ` [${n.tags.join(", ")}]` : "");
+  return notes.map((n) => `${n.id}. ${n.text} (${n.created})${tagText(n)}`).join("\n");
 }
